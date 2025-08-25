@@ -1,0 +1,66 @@
+- hosts: servers
+  become: true
+  tasks:
+    - name: Wait for SSH to come up
+      wait_for_connection:
+        timeout: 300
+
+    - name: Update apt packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Ensure UFW is installed
+      apt:
+        name: ufw
+        state: present
+
+    - name: Allow OpenSSH through UFW
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    - name: Create user 'jon'
+      user:
+        name: jon
+        groups: sudo
+        append: yes
+        state: present
+        create_home: yes
+
+    - name: Authorize SSH key for user 'jon'
+      authorized_key:
+        user: jon
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    - name: Allow 'jon' to use sudo without password
+      lineinfile:
+        path: /etc/sudoers
+        regexp: '^jon'
+        line: 'jon ALL=(ALL) NOPASSWD: ALL'
+        create: yes
+        mode: '0440'
+
+    - name: Disable root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: present
+
+    - name: Disable password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+
+    - name: Restart SSH service
+      service:
+        name: ssh
+        state: restarted
