@@ -60,6 +60,11 @@
         line: 'PasswordAuthentication no'
         state: present
 
+    - name: Install fail2ban
+      apt:
+        name: fail2ban
+        state: present
+
     - name: Restart SSH service
       service:
         name: ssh
